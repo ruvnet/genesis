@@ -4,9 +4,11 @@ import gradio as gr
 from ui.components import (
     create_config_panel,
     create_output_panel,
-    create_control_panel
+    create_control_panel,
+    create_object_panel
 )
 
+@patch('gradio.File')
 @patch('gradio.Dropdown')
 @patch('gradio.Slider')
 @patch('gradio.Checkbox')
@@ -25,7 +27,7 @@ class TestUIComponents(unittest.TestCase):
         self.blocks_patcher.stop()
     
     def test_config_panel_creation(self, mock_row, mock_col, mock_btn, mock_textbox, 
-                                 mock_checkbox, mock_slider, mock_dropdown):
+                                 mock_checkbox, mock_slider, mock_dropdown, mock_file):
         """Test configuration panel creation."""
         inputs, panel = create_config_panel()
         
@@ -54,7 +56,7 @@ class TestUIComponents(unittest.TestCase):
         ], any_order=True)
     
     def test_output_panel_creation(self, mock_row, mock_col, mock_btn, mock_textbox, 
-                                 mock_checkbox, mock_slider, mock_dropdown):
+                                 mock_checkbox, mock_slider, mock_dropdown, mock_file):
         """Test output panel creation."""
         outputs, panel = create_output_panel()
         
@@ -74,7 +76,7 @@ class TestUIComponents(unittest.TestCase):
         ], any_order=True)
     
     def test_control_panel_creation(self, mock_row, mock_col, mock_btn, mock_textbox, 
-                                  mock_checkbox, mock_slider, mock_dropdown):
+                                  mock_checkbox, mock_slider, mock_dropdown, mock_file):
         """Test control panel creation."""
         controls, panel = create_control_panel()
         
@@ -90,6 +92,37 @@ class TestUIComponents(unittest.TestCase):
             unittest.mock.call(value="Start Simulation", variant="primary", size="lg", interactive=True),
             unittest.mock.call(value="Stop Simulation", variant="secondary", size="lg", interactive=True)
         ], any_order=True)
+
+    def test_object_panel_creation(self, mock_row, mock_col, mock_btn, mock_textbox,
+                                 mock_checkbox, mock_slider, mock_dropdown, mock_file):
+        """Test object creation panel."""
+        inputs, panel = create_object_panel()
+        
+        # Verify basic transform inputs exist
+        transform_inputs = {
+            "pos_x", "pos_y", "pos_z",
+            "rot_x", "rot_y", "rot_z",
+            "density"
+        }
+        self.assertTrue(transform_inputs.issubset(inputs.keys()))
+        
+        # Verify object type selection
+        mock_dropdown.assert_any_call(
+            choices=["Sphere", "Box", "Capsule", "Plane", "Mesh"],
+            value="Sphere",
+            label="Object Type"
+        )
+        
+        # Verify collision properties
+        collision_inputs = {
+            "collision_enabled",
+            "collision_margin",
+            "collision_group"
+        }
+        self.assertTrue(collision_inputs.issubset(inputs.keys()))
+        
+        # Verify create button
+        mock_btn.assert_any_call("Create Object", variant="primary")
 
 if __name__ == '__main__':
     unittest.main()

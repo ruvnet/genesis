@@ -6,7 +6,6 @@ import os
 import torch
 from typing import Optional, Tuple, List, Dict, Any
 from ..utils.console_logger import console
-from src.genesis.config.renderer_options import RendererOptions
 
 class SimulationManager:
     def __init__(self):
@@ -16,6 +15,10 @@ class SimulationManager:
         self.sphere: Optional[Any] = None
         self.trajectory_data: List[List[float]] = []
         self.data_lock = threading.Lock()
+        self.entities: Dict[str, Any] = {}
+        self.entity_count = 0
+        self.camera: Optional[Any] = None
+        self.recording: bool = False
     
     def detect_backend(self, compute_backend: str) -> Any:
         """Configure appropriate backend based on selection."""
@@ -29,9 +32,9 @@ class SimulationManager:
     def initialize_simulation(self, config: Dict[str, Any]) -> str:
         """Initialize Genesis simulation with given parameters"""
         try:
-            # Initialize backend
+            # Initialize backend with headless support
             backend = self.detect_backend(config["compute_backend"])
-            gs.init(backend=backend)
+            gs.init(backend=backend, headless=True)
             
             try:
                 # Create simulation options
@@ -88,7 +91,181 @@ class SimulationManager:
             return "Simulation initialized successfully"
         except Exception as e:
             return f"Error initializing simulation: {str(e)}"
-
+    
+    def create_object(self, obj_config: Dict[str, Any]) -> str:
+        """Create a new object in the scene."""
+        if self.scene is None:
+            return "Error: No active simulation scene"
+        
+        try:
+            obj_type = obj_config["object_type"]
+            pos = (obj_config["pos_x"], obj_config["pos_y"], obj_config["pos_z"])
+            rot = (obj_config["rot_x"], obj_config["rot_y"], obj_config["rot_z"])
+            
+            console.add_message(f"Creating {obj_type} object...", "system")
+            
+            if obj_type == "Sphere":
+                entity = self.scene.add_entity(
+                    gs.morphs.Sphere(
+                        pos=pos,
+                        radius=obj_config["sphere_radius"],
+                        density=obj_config["density"]
+                    )
+                )
+                console.add_message(f"Created sphere with radius {obj_config['sphere_radius']}", "success")
+            
+            elif obj_type == "Box":
+                entity = self.scene.add_entity(
+                    gs.morphs.Box(
+                        pos=pos,
+                        size=(obj_config["box_width"], obj_config["box_depth"], obj_config["box_height"]),
+                        density=obj_config["density"]
+                    )
+                )
+                console.add_message(f"Created box with dimensions {obj_config['box_width']}x{obj_config['box_depth']}x{obj_config['box_height']}", "success")
+            
+            elif obj_type == "Capsule":
+                entity = self.scene.add_entity(
+                    gs.morphs.Capsule(
+                        pos=pos,
+                        radius=obj_config["capsule_radius"],
+                        length=obj_config["capsule_length"],
+                        density=obj_config["density"]
+                    )
+                )
+                console.add_message(f"Created capsule with radius {obj_config['capsule_radius']} and length {obj_config['capsule_length']}", "success")
+            
+            elif obj_type == "Plane":
+                entity = self.scene.add_entity(
+                    gs.morphs.Plane(
+                        height=obj_config["plane_height"],
+                        normal=(obj_config["plane_normal_x"], obj_config["plane_normal_y"], obj_config["plane_normal_z"])
+                    )
+                )
+                console.add_message(f"Created plane at height {obj_config['plane_height']}", "success")
+            
+            elif obj_type == "Mesh":
+                if not obj_config.get("mesh_file"):
+                    return "Error: No mesh file provided"
+                
+                entity = self.scene.add_entity(
+                    gs.morphs.Mesh(
+                        file=obj_config["mesh_file"],
+                        scale=obj_config["mesh_scale"],
+                        pos=pos,
+                        convex=obj_config["use_convex"],
+                        max_convex_pieces=obj_config["max_convex"] if obj_config["use_convex"] else None
+                    )
+                )
+                console.add_message(f"Created mesh from {obj_config['mesh_file']}", "success")
+            
+            else:
+                return f"Error: Unknown object type {obj_type}"
+            
+            # Set collision properties
+            if not obj_config["collision_enabled"]:
+                entity.disable_collision()
+            else:
+                entity.set_collision_margin(obj_config["collision_margin"])
+                entity.set_collision_group(obj_config["collision_group"])
+            
+            # Store entity
+            self.entity_count += 1
+            entity_id = f"{obj_type.lower()}_{self.entity_count}"
+            self.entities[entity_id] = entity
+            
+            console.add_message(f"Object created successfully with ID: {entity_id}", "success")
+            return f"Created {obj_type} (ID: {entity_id})"
+            
+        except Exception as e:
+            error_msg = f"Error creating object: {str(e)}"
+            console.add_message(error_msg, "error")
+            return error_msg
+    
+    def update_visualization(self, vis_config: Dict[str, Any]) -> str:
+        """Update visualization settings."""
+        if self.scene is None:
+            return "Error: No active simulation scene"
+        
+        try:
+            # Create renderer
+            if vis_config["renderer_type"] == "RayTracer":
+                renderer = gs.renderers.RayTracer(
+                    tracing_depth=vis_config["tracing_depth"],
+                    rr_depth=vis_config["rr_depth"],
+                    rr_threshold=vis_config["rr_threshold"],
+                    env_radius=vis_config["env_radius"]
+                )
+            else:  # Rasterizer
+                renderer = gs.renderers.Rasterizer()
+            
+            # Create visualization options
+            vis_opts = gs.options.VisOptions(
+                show_world_frame=vis_config["show_world_frame"],
+                world_frame_size=vis_config["world_frame_size"],
+                show_link_frame=vis_config["show_link_frame"],
+                show_cameras=vis_config["show_cameras"],
+                plane_reflection=vis_config["plane_reflection"],
+                ambient_light=(
+                    vis_config["ambient_r"],
+                    vis_config["ambient_g"],
+                    vis_config["ambient_b"]
+                )
+            )
+            
+            # Update scene renderer and options
+            self.scene.set_renderer(renderer)
+            self.scene.set_vis_options(vis_opts)
+            
+            # Update or create camera
+            if self.camera is None:
+                self.camera = self.scene.add_camera(
+                    res=(vis_config["resolution_w"], vis_config["resolution_h"]),
+                    pos=(vis_config["camera_pos_x"], vis_config["camera_pos_y"], vis_config["camera_pos_z"]),
+                    lookat=(vis_config["lookat_x"], vis_config["lookat_y"], vis_config["lookat_z"]),
+                    fov=vis_config["camera_fov"]
+                )
+            else:
+                self.camera.set_resolution(vis_config["resolution_w"], vis_config["resolution_h"])
+                self.camera.set_pose(
+                    pos=(vis_config["camera_pos_x"], vis_config["camera_pos_y"], vis_config["camera_pos_z"]),
+                    lookat=(vis_config["lookat_x"], vis_config["lookat_y"], vis_config["lookat_z"])
+                )
+                self.camera.set_fov(vis_config["camera_fov"])
+            
+            # Handle recording settings
+            if vis_config["recording_enabled"]:
+                if not self.recording:
+                    os.makedirs(vis_config["output_dir"], exist_ok=True)
+                    self.camera.start_recording()
+                    self.recording = True
+                    console.add_message("Started recording", "success")
+            elif self.recording:
+                self.stop_recording(
+                    vis_config["output_dir"],
+                    vis_config["filename"],
+                    vis_config["record_fps"]
+                )
+            
+            console.add_message("Visualization settings updated successfully", "success")
+            return "Visualization settings updated successfully"
+            
+        except Exception as e:
+            error_msg = f"Error updating visualization: {str(e)}"
+            console.add_message(error_msg, "error")
+            return error_msg
+    
+    def stop_recording(self, output_dir: str, filename: str, fps: int) -> None:
+        """Stop recording and save video."""
+        if self.recording and self.camera is not None:
+            try:
+                video_path = os.path.join(output_dir, f"{filename}.mp4")
+                self.camera.stop_recording(save_to_filename=video_path, fps=fps)
+                self.recording = False
+                console.add_message(f"Recording saved to {video_path}", "success")
+            except Exception as e:
+                console.add_message(f"Error saving recording: {str(e)}", "error")
+    
     def simulate_frames(self) -> None:
         """Background thread function to run the simulation and collect data."""
         frame_count = 0
@@ -138,7 +315,7 @@ class SimulationManager:
             except Exception as e:
                 console.add_message(f"Simulation error: {str(e)}", "error")
                 break
-
+    
     def start(self, config: Dict[str, Any]) -> Tuple[str, Optional[str], str]:
         """Start the simulation with given parameters."""
         # Reset data
@@ -166,7 +343,7 @@ class SimulationManager:
         status_msg = "Simulation started successfully"
         console.add_message(status_msg, "success")
         return msg, status_msg, console.get_messages()
-
+    
     def stop(self) -> Tuple[str, str]:
         """Stop the running simulation."""
         console.add_message("Stopping simulation...", "system")

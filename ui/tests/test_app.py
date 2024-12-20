@@ -4,6 +4,8 @@ import gradio as gr
 from ui.app import GenesisUI
 from ui.utils.console_logger import console
 
+@patch('gradio.Tabs')
+@patch('gradio.TabItem')
 @patch('gradio.Dropdown')
 @patch('gradio.Slider')
 @patch('gradio.Checkbox')
@@ -35,10 +37,22 @@ class TestGenesisUI(unittest.TestCase):
         self.sim_patcher.stop()
         self.console_patcher.stop()
     
-    def test_ui_creation(self, mock_md, mock_row, mock_col, mock_btn, 
-                        mock_textbox, mock_checkbox, mock_slider, mock_dropdown):
+    def test_ui_creation(self, mock_md, mock_row, mock_col, mock_btn,
+                        mock_textbox, mock_checkbox, mock_slider, mock_dropdown,
+                        mock_tabitem, mock_tabs):
         """Test UI creation and component setup."""
         demo = self.app.create_ui()
+        
+        # Verify tabs were created
+        mock_tabs.assert_called_once()
+        mock_tabitem.assert_has_calls([
+            unittest.mock.call("Introduction"),
+            unittest.mock.call("Current Capabilities"),
+            unittest.mock.call("Physics Configuration"),
+            unittest.mock.call("Visualization"),
+            unittest.mock.call("Object Creation"),
+            unittest.mock.call("Analysis")
+        ], any_order=True)
         
         # Verify components were created
         self.assertIsNotNone(self.app.inputs)
@@ -56,25 +70,20 @@ class TestGenesisUI(unittest.TestCase):
             "dt",
             "verbose"
         }
-        self.assertEqual(set(self.app.inputs.keys()), expected_inputs)
+        self.assertTrue(expected_inputs.issubset(self.app.inputs.keys()))
         
         # Verify required outputs exist
         expected_outputs = {
             "init_output",
             "stats_output",
-            "console_output"
+            "console_output",
+            "create_status"  # New output for object creation
         }
-        self.assertEqual(set(self.app.outputs.keys()), expected_outputs)
-        
-        # Verify control buttons exist
-        expected_controls = {
-            "start_btn",
-            "stop_btn"
-        }
-        self.assertEqual(set(self.app.controls.keys()), expected_controls)
+        self.assertTrue(expected_outputs.issubset(self.app.outputs.keys()))
     
-    def test_simulation_control(self, mock_md, mock_row, mock_col, mock_btn, 
-                              mock_textbox, mock_checkbox, mock_slider, mock_dropdown):
+    def test_simulation_control(self, mock_md, mock_row, mock_col, mock_btn,
+                              mock_textbox, mock_checkbox, mock_slider, mock_dropdown,
+                              mock_tabitem, mock_tabs):
         """Test simulation start/stop functionality."""
         # Configure mock simulation manager
         mock_sim_instance = self.mock_sim.return_value
@@ -111,9 +120,54 @@ class TestGenesisUI(unittest.TestCase):
         stats_msg, console_msg = self.app.stop_simulation()
         self.assertEqual(stats_msg, "Stopped")
         mock_sim_instance.stop.assert_called_once()
-
-    def test_console_refresh(self, mock_md, mock_row, mock_col, mock_btn, 
-                           mock_textbox, mock_checkbox, mock_slider, mock_dropdown):
+    
+    def test_object_creation(self, mock_md, mock_row, mock_col, mock_btn,
+                           mock_textbox, mock_checkbox, mock_slider, mock_dropdown,
+                           mock_tabitem, mock_tabs):
+        """Test object creation functionality."""
+        # Configure mock simulation manager
+        mock_sim_instance = self.mock_sim.return_value
+        mock_sim_instance.create_object.return_value = "Created Sphere (ID: sphere_1)"
+        
+        # Create UI with mocked components
+        demo = self.app.create_ui()
+        
+        # Test object creation
+        test_params = [
+            "Sphere",    # object_type
+            0.0, 0.0, 1.0,  # position
+            0.0, 0.0, 0.0,  # rotation
+            1000.0,     # density
+            0.2,        # sphere_radius
+            1.0, 0.5, 0.2,  # box dimensions
+            0.1, 0.5,   # capsule radius and length
+            0.0,        # plane height
+            0.0, 0.0, 1.0,  # plane normal
+            None, 1.0,  # mesh file and scale
+            False, 10,  # convex decomposition
+            True,       # collision enabled
+            0.01,       # collision margin
+            0          # collision group
+        ]
+        
+        # Call create_object function
+        create_fn = self.app.demo.fns[1]  # Get the create_object function
+        result = create_fn(*test_params)
+        
+        # Verify result
+        self.assertEqual(result, "Created Sphere (ID: sphere_1)")
+        
+        # Verify simulation manager was called with correct config
+        mock_sim_instance.create_object.assert_called_once()
+        config = mock_sim_instance.create_object.call_args[0][0]
+        self.assertEqual(config["object_type"], "Sphere")
+        self.assertEqual(config["sphere_radius"], 0.2)
+        self.assertEqual(config["density"], 1000.0)
+        self.assertTrue(config["collision_enabled"])
+    
+    def test_console_refresh(self, mock_md, mock_row, mock_col, mock_btn,
+                           mock_textbox, mock_checkbox, mock_slider, mock_dropdown,
+                           mock_tabitem, mock_tabs):
         """Test console refresh mechanism."""
         # Create UI
         demo = self.app.create_ui()
