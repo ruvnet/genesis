@@ -45,9 +45,9 @@ RUN apt-get update && \
     add-apt-repository ppa:deadsnakes/ppa && \
     apt-get update && \
     apt-get install -y \
-    python3.11 \
-    python3.11-venv \
-    python3.11-dev \
+    python3.10 \
+    python3.10-venv \
+    python3.10-dev \
     python3-pip && \
     rm -rf /var/lib/apt/lists/*
 
@@ -76,6 +76,14 @@ RUN chmod +x /home/ci/install.sh
 # Switch to user 'ci' and run installation
 USER ci
 WORKDIR /home/ci
+
+# Set up virtual environment
+ENV PATH="/home/ci/venv/bin:$PATH" \
+    PYTHON_VERSION=3.10 \
+    PYTHON_INCLUDE_DIR=/usr/include/python3.10 \
+    PYTHON_LIBRARY=/usr/lib/python3.10/config-3.10-x86_64-linux-gnu/libpython3.10.so
+
+RUN python3.10 -m venv venv
 
 # Run installation script
 RUN /home/ci/install.sh

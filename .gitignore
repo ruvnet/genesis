@@ -77,6 +77,10 @@ wheels/
 .installed.cfg
 *.egg
 
+# Dependencies
+Genesis/
+ompl/
+
 # Misc
 .DS_Store
 Thumbs.db

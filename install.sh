@@ -9,15 +9,6 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Function to check Python version
-check_python_version() {
-    if command_exists python3.11; then
-        echo "Python 3.11 is already installed"
-        return 0
-    fi
-    return 1
-}
-
 # Function to check if a package is installed via pip
 pip_package_installed() {
     pip show "$1" >/dev/null 2>&1
@@ -34,7 +25,7 @@ check_cmake_version() {
         version=$(cmake --version | head -n1 | cut -d' ' -f3)
         major=$(echo $version | cut -d'.' -f1)
         minor=$(echo $version | cut -d'.' -f2)
-        if [ "$major" -gt 3 ] || ([ "$major" -eq 3 ] && [ "$minor" -ge 18 ]); then
+        if [ "$major" -gt 3 ] || ([ "$major" -eq 3 ] && [ "$minor" -ge 26 ]); then
             return 0
         fi
     fi
@@ -62,7 +53,7 @@ SYSTEM_DEPS=(
     "libeigen3-dev"
     "libode-dev"
     "libyaml-cpp-dev"
-    "libssl-dev"  # Required for CMake build
+    "libssl-dev"
 )
 
 MISSING_DEPS=()
@@ -78,10 +69,10 @@ if [ ${#MISSING_DEPS[@]} -ne 0 ]; then
     sudo apt-get install -y "${MISSING_DEPS[@]}"
 fi
 
-# Install CMake 3.18+ from source if needed
+# Install CMake 3.26+ from source if needed
 if ! check_cmake_version; then
-    echo "Installing CMake 3.18+ from source..."
-    CMAKE_VERSION="3.18.6"
+    echo "Installing CMake 3.26+ from source..."
+    CMAKE_VERSION="3.26.5"
     wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz
     tar -zxvf cmake-${CMAKE_VERSION}.tar.gz
     cd cmake-${CMAKE_VERSION}
@@ -93,76 +84,82 @@ if ! check_cmake_version; then
     hash -r
 fi
 
-# Check and install Python 3.11
-if ! check_python_version; then
-    echo "Installing Python 3.11..."
+# Check and install Python 3.10
+if ! command_exists python3.10; then
+    echo "Installing Python 3.10..."
     sudo add-apt-repository ppa:deadsnakes/ppa -y
     sudo apt-get update
-    sudo apt-get install -y python3.11 python3.11-venv python3.11-dev python3-pip
+    sudo apt-get install -y python3.10 python3.10-venv python3.10-dev python3-pip
 fi
 
 # Create and activate virtual environment if it doesn't exist
 if [ ! -d "venv" ]; then
     echo "Creating virtual environment..."
-    python3.11 -m venv venv
+    python3.10 -m venv venv
 fi
 source venv/bin/activate
 
 # Upgrade pip
 pip install --upgrade pip
 
-# Check and install PyTorch
-if ! pip_package_installed "torch"; then
-    echo "Installing PyTorch..."
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-fi
+# Check and install Python packages
+PYTHON_PKGS=(
+    "torch"
+    "genesis-world"
+)
 
-# Check and install genesis-world
-if ! pip_package_installed "genesis-world"; then
-    echo "Installing genesis-world..."
-    pip install genesis-world
-fi
+for pkg in "${PYTHON_PKGS[@]}"; do
+    if ! pip_package_installed "$pkg"; then
+        echo "Installing $pkg..."
+        if [ "$pkg" = "torch" ]; then
+            pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+        else
+            pip install "$pkg"
+        fi
+    fi
+done
 
-# Remove existing Genesis directory if installation failed
-if [ -d "Genesis" ] && ! pip_package_installed "genesis"; then
-    echo "Removing existing Genesis directory due to failed installation..."
-    rm -rf Genesis
-fi
-
-# Clone and install Genesis
-if [ ! -d "Genesis" ]; then
-    echo "Cloning Genesis repository..."
+# Install Genesis if needed
+if [ ! -d "Genesis" ] || ! pip_package_installed "genesis"; then
+    echo "Installing Genesis..."
+    if [ -d "Genesis" ]; then
+        rm -rf Genesis
+    fi
     git clone https://github.com/Genesis-Embodied-AI/Genesis.git
     cd Genesis
-    # Install Genesis in editable mode
     pip install -e .
-else
-    cd Genesis
-    if ! pip_package_installed "genesis"; then
-        echo "Installing Genesis in editable mode..."
-        pip install -e .
-    fi
+    cd ..
 fi
 
-echo "Installing all optional components..."
+echo "Installing optional components..."
 
 # 1. Motion Planning (OMPL)
-echo "Installing OMPL..."
 if ! pip_package_installed "ompl"; then
+    echo "Installing OMPL..."
     # Install OMPL dependencies
-    sudo apt-get install -y \
-        libboost-filesystem-dev \
-        libboost-system-dev \
-        libboost-program-options-dev \
-        libboost-serialization-dev \
-        libeigen3-dev \
-        libode-dev \
-        python3-dev \
-        python3-pip \
-        castxml \
-        libccd-dev \
-        libfcl-dev \
-        python3.11-dev
+    OMPL_DEPS=(
+        "libboost-filesystem-dev"
+        "libboost-system-dev"
+        "libboost-program-options-dev"
+        "libboost-serialization-dev"
+        "castxml"
+        "libccd-dev"
+        "libfcl-dev"
+        "ninja-build"
+        "python3.10-dev"
+    )
+
+    MISSING_OMPL_DEPS=()
+    for pkg in "${OMPL_DEPS[@]}"; do
+        if ! apt_package_installed "$pkg"; then
+            MISSING_OMPL_DEPS+=("$pkg")
+        fi
+    done
+
+    if [ ${#MISSING_OMPL_DEPS[@]} -ne 0 ]; then
+        echo "Installing missing OMPL dependencies: ${MISSING_OMPL_DEPS[*]}"
+        sudo apt-get install -y "${MISSING_OMPL_DEPS[@]}"
+    fi
 
     # Install OMPL from source with Python bindings
     if [ ! -d "ompl" ]; then
@@ -171,45 +168,46 @@ if ! pip_package_installed "ompl"; then
         mkdir -p build
         cd build
         cmake .. \
-            -DPYTHON_EXEC=/usr/bin/python3.11 \
-            -DPYTHON_INCLUDE_DIR=/usr/include/python3.11 \
-            -DPYTHON_LIBRARY=/usr/lib/python3.11/config-3.11-x86_64-linux-gnu/libpython3.11.so
+            -DPYTHON_EXEC=/usr/bin/python3.10 \
+            -DPYTHON_INCLUDE_DIR=/usr/include/python3.10 \
+            -DPYTHON_LIBRARY=/usr/lib/python3.10/config-3.10-x86_64-linux-gnu/libpython3.10.so \
+            -DOMPL_BUILD_PYBINDINGS=ON \
+            -DOMPL_REGISTRATION=OFF \
+            -DOMPL_BUILD_DEMOS=OFF \
+            -DOMPL_BUILD_PYTESTS=OFF \
+            -DOMPL_BUILD_TESTS=OFF
         make -j $(nproc)
         sudo make install
-        # Install Python bindings
         cd ../py-bindings
-        pip install -e .
+        pip install pyplusplus
+        python3.10 setup.py build
+        sudo python3.10 setup.py install
         cd ../..
     fi
 fi
 
 # 2. Surface Reconstruction Tools
-echo "Installing surface reconstruction tools..."
-
-# Install Rust and splashsurf if not installed
 if ! command_exists splashsurf; then
+    echo "Installing surface reconstruction tools..."
     if ! command_exists rustc; then
         echo "Installing Rust..."
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        # Source cargo environment
-        if [ -f "$HOME/.cargo/env" ]; then
-            . "$HOME/.cargo/env"
-        fi
+        . "$HOME/.cargo/env"
     fi
     echo "Installing splashsurf..."
     cargo install splashsurf --force
 fi
 
-# Setup ParticleMesher
-if [ ! -d "genesis/ext/ParticleMesher" ]; then
+# Setup ParticleMesher if not already set up
+if [ ! -d "Genesis/genesis/ext/ParticleMesher" ]; then
     echo "Setting up ParticleMesher..."
-    echo "export LD_LIBRARY_PATH=${PWD}/genesis/ext/ParticleMesher/ParticleMesherPy:$LD_LIBRARY_PATH" >> ~/.bashrc
+    echo "export LD_LIBRARY_PATH=${PWD}/Genesis/genesis/ext/ParticleMesher/ParticleMesherPy:$LD_LIBRARY_PATH" >> ~/.bashrc
     source ~/.bashrc
 fi
 
 # 3. Ray Tracing Renderer (LuisaRender)
-echo "Installing LuisaRender..."
-if [ ! -d "genesis/ext/LuisaRender/build" ]; then
+if [ ! -d "Genesis/genesis/ext/LuisaRender/build" ]; then
+    echo "Installing LuisaRender..."
     # Install GCC 11 if not present
     if ! command_exists gcc-11; then
         sudo apt install -y build-essential manpages-dev
@@ -221,11 +219,11 @@ if [ ! -d "genesis/ext/LuisaRender/build" ]; then
     
     # Verify CMake version again before proceeding
     if ! check_cmake_version; then
-        echo "Error: CMake 3.18+ is required but not found in PATH"
+        echo "Error: CMake 3.26+ is required but not found in PATH"
         exit 1
     fi
     
-    # Install other dependencies
+    # Install LuisaRender dependencies
     LUISA_DEPS=(
         "patchelf"
         "libvulkan-dev"
@@ -251,17 +249,14 @@ if [ ! -d "genesis/ext/LuisaRender/build" ]; then
         pip install "pybind11[global]"
     fi
     
-    # Initialize and update LuisaRender submodule
+    cd Genesis
     git submodule update --init --recursive
-    
-    # Build LuisaRender
     cd genesis/ext/LuisaRender
     cmake -S . -B build \
         -D CMAKE_BUILD_TYPE=Release \
-        -D PYTHON_VERSIONS=3.11 \
+        -D PYTHON_VERSIONS=3.10 \
         -D LUISA_COMPUTE_DOWNLOAD_NVCOMP=ON \
         -D LUISA_COMPUTE_ENABLE_GUI=OFF
-    
     cmake --build build -j $(nproc)
     cd ../../..
 fi
@@ -273,7 +268,7 @@ echo "Note: You may need to restart your terminal for some changes to take effec
 echo -e "\nInstallation Status:"
 echo "--------------------"
 echo "Core Components:"
-python3.11 --version 2>/dev/null && echo "✓ Python 3.11 installed" || echo "✗ Python 3.11 not installed"
+python3.10 --version 2>/dev/null && echo "✓ Python 3.10 installed" || echo "✗ Python 3.10 not installed"
 pip_package_installed "torch" && echo "✓ PyTorch installed" || echo "✗ PyTorch not installed"
 pip_package_installed "genesis-world" && echo "✓ genesis-world installed" || echo "✗ genesis-world not installed"
 pip_package_installed "genesis" && echo "✓ Genesis installed" || echo "✗ Genesis not installed"
@@ -281,5 +276,5 @@ pip_package_installed "genesis" && echo "✓ Genesis installed" || echo "✗ Gen
 echo -e "\nOptional Components:"
 pip_package_installed "ompl" && echo "✓ OMPL installed" || echo "✗ OMPL not installed"
 command_exists splashsurf && echo "✓ splashsurf installed" || echo "✗ splashsurf not installed"
-[ -d "genesis/ext/ParticleMesher" ] && echo "✓ ParticleMesher setup" || echo "✗ ParticleMesher not setup"
-[ -d "genesis/ext/LuisaRender/build" ] && echo "✓ LuisaRender built" || echo "✗ LuisaRender not built"
+[ -d "Genesis/genesis/ext/ParticleMesher" ] && echo "✓ ParticleMesher setup" || echo "✗ ParticleMesher not setup"
+[ -d "Genesis/genesis/ext/LuisaRender/build" ] && echo "✓ LuisaRender built" || echo "✗ LuisaRender not built"
