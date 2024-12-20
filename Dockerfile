@@ -126,7 +126,7 @@ python3.10 genesis_ui.py' > run.sh && \
     chmod +x run.sh
 
 # Expose port for Gradio UI
-EXPOSE 7860
+EXPOSE 8080
 
 # Set entrypoint
 CMD ["./run.sh"]
