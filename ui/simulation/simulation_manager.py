@@ -6,6 +6,7 @@ import os
 import torch
 from typing import Optional, Tuple, List, Dict, Any
 from ..utils.console_logger import console
+from .analysis_manager import AnalysisManager
 
 class SimulationManager:
     def __init__(self):
@@ -19,6 +20,7 @@ class SimulationManager:
         self.entity_count = 0
         self.camera: Optional[Any] = None
         self.recording: bool = False
+        self.analysis = AnalysisManager()
     
     def detect_backend(self, compute_backend: str) -> Any:
         """Configure appropriate backend based on selection."""
@@ -32,38 +34,45 @@ class SimulationManager:
     def initialize_simulation(self, config: Dict[str, Any]) -> str:
         """Initialize Genesis simulation with given parameters"""
         try:
-            # Initialize backend
+            # Try to reset Genesis state if already running
+            try:
+                if hasattr(gs, 'clear'):
+                    gs.clear()
+                    console.add_message("Reset Genesis state", "system")
+                elif hasattr(gs, 'reset'):
+                    gs.reset()
+                    console.add_message("Reset Genesis state", "system")
+            except:
+                pass  # Ignore any reset errors
+            
+            # Initialize Genesis with new backend
             backend = self.detect_backend(config["compute_backend"])
             gs.init(backend=backend)
+            console.add_message("Genesis initialized successfully", "success")
             
+            # Create simulation options
+            console.add_message("Creating simulation options...", "system")
+            sim_opts = gs.options.SimOptions(
+                dt=config["dt"],
+                substeps=2,
+                gravity=(config["gravity_x"], config["gravity_y"], config["gravity_z"]),
+                floor_height=0.0,
+                requires_grad=False
+            )
+            console.add_message("Simulation options created successfully", "success")
+            
+            # Create scene with physics only (no rendering)
+            console.add_message("Creating physics scene...", "system")
             try:
-                # Create simulation options
-                console.add_message("Creating simulation options...", "system")
-                sim_opts = gs.options.SimOptions(
-                    dt=config["dt"],
-                    substeps=2,
-                    gravity=(config["gravity_x"], config["gravity_y"], config["gravity_z"]),
-                    floor_height=0.0,
-                    requires_grad=False
+                # Create scene with options
+                self.scene = gs.Scene(
+                    sim_options=sim_opts,
+                    show_viewer=False
                 )
-                console.add_message("Simulation options created successfully", "success")
-                
-                # Create scene with physics only (no rendering)
-                console.add_message("Creating physics scene...", "system")
-                try:
-                    # Create scene with options
-                    self.scene = gs.Scene(
-                        sim_options=sim_opts,
-                        show_viewer=False
-                    )
-                    console.add_message("Scene created successfully", "success")
-                except Exception as scene_error:
-                    console.add_message(f"Scene creation failed: {str(scene_error)}", "error")
-                    console.add_message(f"Scene error type: {type(scene_error)}", "error")
-                    raise
-            except Exception as e:
-                console.add_message(f"Error in initialization: {str(e)}", "error")
-                console.add_message(f"Error type: {type(e)}", "error")
+                console.add_message("Scene created successfully", "success")
+            except Exception as scene_error:
+                console.add_message(f"Scene creation failed: {str(scene_error)}", "error")
+                console.add_message(f"Scene error type: {type(scene_error)}", "error")
                 raise
             
             try:
@@ -273,22 +282,15 @@ class SimulationManager:
         start_time = time.time()
         last_status_time = start_time
         
-        while self.simulation_running and self.scene is not None and self.sphere is not None:
+        while self.simulation_running and self.scene is not None:
             try:
                 # Physics step
                 self.scene.step()
                 frame_count += 1
                 
-                # Collect data
-                pos = self.sphere.get_pos()
-                vel = self.sphere.get_vel()
-                with self.data_lock:
-                    self.trajectory_data.append([
-                        len(self.trajectory_data),
-                        float(pos[0]),
-                        float(pos[1]),
-                        float(pos[2])
-                    ])
+                # Update analysis tracking
+                current_time = time.time() - start_time
+                self.analysis.update_tracking(self.scene, current_time)
                 
                 # Update status every 1 second
                 current_time = time.time()
@@ -296,16 +298,15 @@ class SimulationManager:
                     elapsed = current_time - start_time
                     fps = frame_count / elapsed
                     
-                    # Get physics state
-                    ke = 0.5 * self.sphere.get_mass() * np.sum(np.array(vel) ** 2)
-                    pe = self.sphere.get_mass() * 9.81 * pos[2]
+                    # Get current energy values
+                    energy = self.analysis.get_current_energy()
                     
                     status = (
                         f"Frame: {frame_count} | "
                         f"FPS: {fps:.1f} | "
-                        f"Position: ({pos[0]:.2f}, {pos[1]:.2f}, {pos[2]:.2f}) | "
-                        f"Velocity: ({vel[0]:.2f}, {vel[1]:.2f}, {vel[2]:.2f}) | "
-                        f"KE: {ke:.2f}J | PE: {pe:.2f}J"
+                        f"KE: {energy['kinetic']:.2f}J | "
+                        f"PE: {energy['potential']:.2f}J | "
+                        f"Total E: {energy['total']:.2f}J"
                     )
                     console.add_message(status, "status")
                     last_status_time = current_time
@@ -352,58 +353,66 @@ class SimulationManager:
         if self.simulation_thread is not None:
             self.simulation_thread.join()
         
-        # Clean up scene
+        # Clean up resources
         if self.scene is not None:
+            # Set scene to None first to ensure simulation loop stops
+            scene = self.scene
+            self.scene = None
+            
             try:
-                self.scene.destroy()
-                self.scene = None
-                console.add_message("Scene resources cleaned up", "system")
+                # Try different cleanup methods
+                if hasattr(scene, 'clear'):
+                    scene.clear()
+                elif hasattr(scene, 'reset'):
+                    scene.reset()
+                elif hasattr(gs, 'clear'):
+                    gs.clear()
+                elif hasattr(gs, 'reset'):
+                    gs.reset()
+                
+                console.add_message("Scene resources cleaned up", "success")
             except Exception as e:
                 console.add_message(f"Warning: Scene cleanup error: {str(e)}", "warning")
+            
+            # Clear other resources
+            self.sphere = None
+            self.entities.clear()
+            self.entity_count = 0
+            self.camera = None
+            self.recording = False
         
-        # Save trajectory data
-        if len(self.trajectory_data) > 0:
-            try:
-                os.makedirs("data", exist_ok=True)
-                csv_file = os.path.join("data", "sphere_trajectory.csv")
-                
-                with self.data_lock:
-                    trajectory = np.array(self.trajectory_data)
-                    np.savetxt(
-                        csv_file,
-                        trajectory,
-                        header="step,x,y,z",
-                        delimiter=',',
-                        fmt=['%3d', '%9.6f', '%9.6f', '%9.6f'],
-                        comments=''
-                    )
-                
-                # Calculate statistics
-                initial_height = trajectory[0, 3]
-                final_height = trajectory[-1, 3]
-                distance_fallen = initial_height - final_height
-                sim_time = trajectory[-1, 0] * 0.01
-                avg_velocity = distance_fallen / sim_time if sim_time > 0 else 0
-                
-                stats = f"""
-Simulation Statistics:
-Initial height: {initial_height:.3f} m
-Final height: {final_height:.3f} m
-Total distance fallen: {distance_fallen:.3f} m
-Simulation time: {sim_time:.2f} seconds
-Average velocity: {avg_velocity:.3f} m/s
-Data points collected: {len(trajectory)}
-Data saved to: {csv_file}
-"""
-                console.add_message("Simulation completed successfully", "success")
-                console.add_message(f"Saved {len(trajectory)} data points to {csv_file}", "system")
-                return stats, console.get_messages()
-                
-            except Exception as e:
-                error_msg = f"Error saving data: {str(e)}"
-                console.add_message(error_msg, "error")
-                return error_msg, console.get_messages()
-        
-        msg = "Simulation stopped (no data collected)"
-        console.add_message(msg, "warning")
+        msg = "Simulation stopped"
+        console.add_message(msg, "success")
         return msg, console.get_messages()
+    
+    def get_analysis_plots(self) -> Tuple[Optional[Any], Optional[Any], Optional[Any]]:
+        """Get current analysis plots."""
+        return (
+            self.analysis.get_position_plot(),
+            self.analysis.get_velocity_plot(),
+            self.analysis.get_energy_plot()
+        )
+    
+    def get_current_energy(self) -> Dict[str, float]:
+        """Get current energy values."""
+        return self.analysis.get_current_energy()
+    
+    def export_analysis_data(self, path: str, prefix: str,
+                           export_position: bool = True,
+                           export_velocity: bool = True,
+                           export_energy: bool = True) -> str:
+        """Export analysis data to CSV files."""
+        return self.analysis.export_data(
+            path, prefix,
+            export_position,
+            export_velocity,
+            export_energy
+        )
+    
+    def update_analysis_settings(self, track_position: bool,
+                               track_velocity: bool,
+                               track_energy: bool) -> None:
+        """Update analysis tracking settings."""
+        self.analysis.track_position = track_position
+        self.analysis.track_velocity = track_velocity
+        self.analysis.track_energy = track_energy

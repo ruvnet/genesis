@@ -7,7 +7,8 @@ from .components import (
     create_output_panel,
     create_control_panel,
     create_object_panel,
-    create_visualization_panel
+    create_visualization_panel,
+    create_analysis_panel
 )
 from .simulation.simulation_manager import SimulationManager
 from .utils.console_logger import console
@@ -50,36 +51,51 @@ class GenesisUI:
                 with gr.TabItem("Introduction"):
                     gr.Markdown("""
                     # Welcome to Genesis Physics Simulation
-                    
-                    Genesis is a versatile physics simulation framework that supports:
-                    - Multiple physics solvers (Rigid Body, MPM, SPH, PBD, FEM)
-                    - Real-time visualization and rendering
-                    - Various object types and materials
-                    - Data collection and analysis
-                    
-                    Use the tabs above to configure and control your simulation.
+
+                    Genesis is a groundbreaking physics platform designed for robotics and embodied AI applications, combining unprecedented simulation speeds with comprehensive features.
+
+                    ## Core Capabilities
+                    - **Ultra-Fast Performance**: Achieves up to 43 million FPS on RTX 4090 (430,000x faster than real-time)
+                    - **Universal Physics Engine**: Supports multiple solvers including:
+                        • Rigid Body Dynamics
+                        • Material Point Method (MPM)
+                        • Smoothed Particle Hydrodynamics (SPH)
+                        • Finite Element Method (FEM)
+                        • Position Based Dynamics (PBD)
+                        • Stable Fluid Simulation
+
+                    ## Material Support
+                    - Liquids and gases
+                    - Deformable objects
+                    - Granular materials
+                    - Various robot types (arms, legged robots, drones, soft robots)
+
+                    ## Technical Features
+                    - Built-in ray-tracing based rendering for photorealistic visualization
+                    - Multiple compute backend support (CPU, NVIDIA GPU, AMD GPU, Apple Metal)
+                    - Compatible with MJCF, URDF, obj, glb, ply, and stl file formats
+                    - Real-time data collection and analysis capabilities
+
+                    ## Performance Benefits
+                    - 10-80x faster than existing GPU-accelerated robotic simulators
+                    - High simulation accuracy and fidelity
+                    - Efficient training for real-world transferable robot policies
+
+                    Use the tabs above to configure and control your simulation. Start with the Physics Configuration tab to set up your simulation parameters.
                     """)
                 
-                # Current Capabilities Tab
-                with gr.TabItem("Current Capabilities"):
-                    gr.Markdown("""
-                    # Current Features
-                    
-                    ## Physics
-                    - Rigid body simulation
-                    - Gravity and force fields
-                    - Collision detection
-                    
-                    ## Objects
-                    - Sphere primitives
-                    - Ground plane
-                    
-                    ## Analysis
-                    - Position tracking
-                    - Velocity monitoring
-                    - Energy calculations
-                    - Data export to CSV
-                    """)
+                # AI Chat Tab
+                with gr.TabItem("AI"):
+                    chatbot = gr.Chatbot()
+                    msg = gr.Textbox(label="Message", placeholder="Type your message here...")
+                    clear = gr.Button("Clear")
+
+                    def respond(message, history):
+                        # For now, just echo the message. You can implement actual AI response logic here
+                        return message
+
+                    msg.submit(respond, [msg, chatbot], [chatbot])
+                    clear.click(lambda: None, None, chatbot, queue=False)
                 
                 # Physics Configuration Tab
                 with gr.TabItem("Physics Configuration"):
@@ -230,7 +246,91 @@ class GenesisUI:
                     )
                 
                 with gr.TabItem("Analysis"):
-                    gr.Markdown("Analysis tools coming soon...")
+                    # Create analysis panel
+                    analysis_inputs, analysis_outputs, analysis_panel = create_analysis_panel()
+                    self.inputs.update(analysis_inputs)
+                    self.outputs.update(analysis_outputs)
+                    
+                    # Connect analysis controls
+                    def update_analysis_settings(*args):
+                        if self.simulation is None:
+                            return "Error: No active simulation"
+                        
+                        self.simulation.update_analysis_settings(
+                            track_position=args[0],
+                            track_velocity=args[1],
+                            track_energy=args[2]
+                        )
+                        return "Analysis settings updated"
+                    
+                    def update_analysis_plots():
+                        if self.simulation is None:
+                            return None, None, None
+                        return self.simulation.get_analysis_plots()
+                    
+                    def update_energy_values():
+                        if self.simulation is None:
+                            return 0.0, 0.0, 0.0
+                        energy = self.simulation.get_current_energy()
+                        return energy['kinetic'], energy['potential'], energy['total']
+                    
+                    def export_analysis_data(*args):
+                        if self.simulation is None:
+                            return "Error: No active simulation"
+                        return self.simulation.export_analysis_data(
+                            path=args[0],
+                            prefix=args[1],
+                            export_position=args[2],
+                            export_velocity=args[3],
+                            export_energy=args[4]
+                        )
+                    
+                    # Connect analysis settings
+                    for track_input in [
+                        analysis_inputs["track_position"],
+                        analysis_inputs["track_velocity"],
+                        analysis_inputs["track_energy"]
+                    ]:
+                        track_input.change(
+                            fn=update_analysis_settings,
+                            inputs=[
+                                analysis_inputs["track_position"],
+                                analysis_inputs["track_velocity"],
+                                analysis_inputs["track_energy"]
+                            ],
+                            outputs=[analysis_outputs["export_status"]]
+                        )
+                    
+                    # Connect export button
+                    analysis_inputs["export_btn"].click(
+                        fn=export_analysis_data,
+                        inputs=[
+                            analysis_inputs["export_path"],
+                            analysis_inputs["export_prefix"],
+                            analysis_inputs["export_position"],
+                            analysis_inputs["export_velocity"],
+                            analysis_inputs["export_energy"]
+                        ],
+                        outputs=[analysis_outputs["export_status"]]
+                    )
+                    
+                    # Set up periodic plot updates
+                    for plot_output in [
+                        analysis_outputs["position_plot"],
+                        analysis_outputs["velocity_plot"],
+                        analysis_outputs["energy_plot"]
+                    ]:
+                        plot_output.value = update_analysis_plots
+                        plot_output.every = 1
+                    
+                    # Set up periodic energy value updates
+                    for energy_output in [
+                        analysis_outputs["kinetic_energy"],
+                        analysis_outputs["potential_energy"],
+                        analysis_outputs["total_energy"]
+                    ]:
+                        energy_output.value = update_energy_values
+                        energy_output.every = 1
             
             # Connect components
             self.controls["start_btn"].click(
