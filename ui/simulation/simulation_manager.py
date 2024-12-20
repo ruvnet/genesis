@@ -6,6 +6,7 @@ import os
 import torch
 from typing import Optional, Tuple, List, Dict, Any
 from ..utils.console_logger import console
+from src.genesis.config.renderer_options import RendererOptions
 
 class SimulationManager:
     def __init__(self):
@@ -32,33 +33,54 @@ class SimulationManager:
             backend = self.detect_backend(config["compute_backend"])
             gs.init(backend=backend)
             
-            # Create scene with minimal visualization
-            self.scene = gs.Scene(
-                show_viewer=False,
-                sim_options=gs.options.SimOptions(
+            try:
+                # Create simulation options
+                console.add_message("Creating simulation options...", "system")
+                sim_opts = gs.options.SimOptions(
                     dt=config["dt"],
                     substeps=2,
                     gravity=(config["gravity_x"], config["gravity_y"], config["gravity_z"]),
+                    floor_height=0.0,
                     requires_grad=False
-                ),
-                renderer_options=gs.options.RendererOptions(
-                    headless=True,
-                    use_offscreen=True,
-                    enable_shadow=False,
-                    enable_ao=False
                 )
-            )
+                console.add_message("Simulation options created successfully", "success")
+                
+                # Create scene with physics only (no rendering)
+                console.add_message("Creating physics scene...", "system")
+                try:
+                    self.scene = gs.Scene(
+                        sim_options=sim_opts,
+                        show_viewer=False
+                    )
+                    console.add_message("Scene created successfully", "success")
+                except Exception as scene_error:
+                    console.add_message(f"Scene creation failed: {str(scene_error)}", "error")
+                    console.add_message(f"Scene error type: {type(scene_error)}", "error")
+                    raise
+            except Exception as e:
+                console.add_message(f"Error in initialization: {str(e)}", "error")
+                console.add_message(f"Error type: {type(e)}", "error")
+                raise
             
-            # Add ground plane
-            self.scene.add_entity(gs.morphs.Plane())
-            
-            # Add sphere
-            self.sphere = self.scene.add_entity(
-                gs.morphs.Sphere(
-                    pos=(0, 0, 1),
-                    radius=0.2
+            try:
+                # Add ground plane
+                console.add_message("Adding ground plane...", "system")
+                self.scene.add_entity(gs.morphs.Plane())
+                console.add_message("Ground plane added successfully", "success")
+                
+                # Add sphere
+                console.add_message("Adding sphere...", "system")
+                self.sphere = self.scene.add_entity(
+                    gs.morphs.Sphere(
+                        pos=(0, 0, 1),
+                        radius=0.2
+                    )
                 )
-            )
+                console.add_message("Sphere added successfully", "success")
+            except Exception as entity_error:
+                console.add_message(f"Error adding entities: {str(entity_error)}", "error")
+                console.add_message(f"Entity error type: {type(entity_error)}", "error")
+                raise
             
             # Build scene
             self.scene.build()
