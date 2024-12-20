@@ -12,5 +12,20 @@ services:
     ports:
       - "7860:7860"
     volumes:
-      - .:/home/ci/Genesis
+      - .:/home/ci/app
+      - ./data:/home/ci/data
+      - ./frames:/home/ci/frames
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+        reservations:
+          memory: 8G
+    shm_size: '8gb'
+    healthcheck:
+      test: ["CMD", "python3.11", "-c", "import genesis; print('Genesis health check passed')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
