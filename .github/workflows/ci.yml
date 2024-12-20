@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-linux-gpu:
+    runs-on: ubuntu-latest
+    # Ensure the runner has GPU access
+    # Note: GitHub's hosted runners do not have GPUs. Use self-hosted runners with GPU capabilities.
+    container:
+      image: genesis:latest
+      options: --gpus all
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Black Format Check
+        run: |
+          source venv/bin/activate
+          pip install black
+          black --check .
+
+      - name: Run Linting
+        run: |
+          source venv/bin/activate
+          pip install flake8
+          flake8 .
+
+      - name: Run Tests
+        run: |
+          source venv/bin/activate
+          python -m unittest discover tests
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: test-results.xml
+
+      - name: Display Speed Test
+        if: success()
+        run: |
+          cat speed_test.txt

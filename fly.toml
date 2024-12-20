@@ -1,0 +1,27 @@
+app = "genesis-ui"
+primary_region = "ord"
+
+[build]
+image = "genesis:latest"
+
+[env]
+PYTHON_VERSION = "3.11"
+NVIDIA_VISIBLE_DEVICES = "all"
+NVIDIA_DRIVER_CAPABILITIES = "compute,utility,graphics"
+
+[[mounts]]
+source = "genesis_data"
+destination = "/home/ci/Genesis/data"
+initial_size = "100gb"
+
+[http_service]
+internal_port = 7860
+force_https = true
+auto_stop_machines = false
+min_machines_running = 1
+
+[[vm]]
+size = "a100-40gb"
+memory = "32gb"
+cpu_kind = "performance"
+cpus = 8
