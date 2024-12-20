@@ -81,6 +81,14 @@ wheels/
 Genesis/
 ompl/
 
+# Media files
+*.mp4
+*.mov
+*.avi
+*.wmv
+*.flv
+*.mkv
+
 # Misc
 .DS_Store
 Thumbs.db
