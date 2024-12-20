@@ -1,3 +1,10 @@
+import sys
+import os
+
+# Add Genesis directory to Python path
+genesis_path = os.path.join(os.path.dirname(__file__), 'Genesis')
+sys.path.append(genesis_path)
+
 import gradio as gr
 from ui import create_app
 

@@ -32,9 +32,9 @@ class SimulationManager:
     def initialize_simulation(self, config: Dict[str, Any]) -> str:
         """Initialize Genesis simulation with given parameters"""
         try:
-            # Initialize backend with headless support
+            # Initialize backend
             backend = self.detect_backend(config["compute_backend"])
-            gs.init(backend=backend, headless=True)
+            gs.init(backend=backend)
             
             try:
                 # Create simulation options
@@ -51,6 +51,7 @@ class SimulationManager:
                 # Create scene with physics only (no rendering)
                 console.add_message("Creating physics scene...", "system")
                 try:
+                    # Create scene with options
                     self.scene = gs.Scene(
                         sim_options=sim_opts,
                         show_viewer=False
@@ -213,7 +214,7 @@ class SimulationManager:
                 )
             )
             
-            # Update scene renderer and options
+            # Update scene options
             self.scene.set_renderer(renderer)
             self.scene.set_vis_options(vis_opts)
             
