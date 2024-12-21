@@ -86,7 +86,7 @@ class GenesisUI:
                 
                 # AI Chat Tab
                 with gr.TabItem("AI"):
-                    chatbot = gr.Chatbot()
+                    chatbot = gr.Chatbot(type='messages')
                     msg = gr.Textbox(label="Message", placeholder="Type your message here...")
                     clear = gr.Button("Clear")
 
