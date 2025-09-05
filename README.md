@@ -1,6 +1,24 @@
-# Genesis Ui by rUv
+# Genesis - Advanced Physics Platform with AI-Powered Environmental Awareness
 
-Genesis is a groundbreaking physics platform designed for robotics and embodied AI applications that combines unprecedented simulation speeds with comprehensive features.
+<div align="center">
+
+[![Performance](https://img.shields.io/badge/Simulation-43M%20FPS-green)](https://github.com/ruvnet/genesis)
+[![Environmental AI](https://img.shields.io/badge/Environmental%20AI-113x%20Faster-blue)](rust_env_awareness/)
+[![Flow Nexus](https://img.shields.io/badge/Powered%20by-Flow%20Nexus-purple)](https://flow-nexus.com)
+[![License](https://img.shields.io/badge/License-Apache%202.0-yellow)](LICENSE)
+
+</div>
+
+Genesis is a groundbreaking physics platform designed for robotics and embodied AI applications that combines unprecedented simulation speeds with comprehensive features. Now featuring a **blazing-fast Rust-based Environmental Awareness System** with 113x performance improvements, powered by [Flow Nexus](https://flow-nexus.com) AI orchestration.
+
+## 🎯 What's New in v2.0
+
+- **🚀 113x Faster Environmental Awareness**: Microsecond-latency sensor fusion and spatial mapping
+- **🤖 Flow Nexus Integration**: AI-powered optimization with swarm intelligence
+- **💾 84% Memory Reduction**: Optimized memory pools and zero-cost abstractions
+- **🧠 Neural Network Acceleration**: Custom SIMD-optimized neural processing
+- **📊 Real-time Analytics**: P50/P95/P99 latency tracking and performance monitoring
+- **🔧 Production Ready**: Thread-safe, fully tested, and benchmarked
 
 ## Core Features
 
@@ -33,19 +51,24 @@ Genesis is a groundbreaking physics platform designed for robotics and embodied 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Installation](#installation)
+2. [High-Performance Environmental Awareness (New!)](#high-performance-environmental-awareness-system)
+   - [Performance Metrics](#-performance-achievements)
+   - [Flow Nexus Integration](#-flow-nexus-integration)
+   - [Quick Start Guide](#-quick-start)
+3. [Installation](#installation)
    - [1. Quick Installation via Pip](#1-quick-installation-via-pip)
-   - [2. Docker Setup](#2-docker-setup)
-   - [3. Installation Scripts](#3-installation-scripts)
-3. [Configuration](#configuration)
+   - [2. Rust Components Setup](#2-rust-components-setup)
+   - [3. Docker Setup](#3-docker-setup)
+   - [4. Installation Scripts](#4-installation-scripts)
+4. [Configuration](#configuration)
    - [SimOptions](#simoptions)
    - [CouplerOptions](#coupleroptions)
    - [RendererOptions](#rendereroptions)
-4. [Requirements](#requirements)
-5. [Dockerfile and Docker Compose](#dockerfile-and-docker-compose)
-6. [Continuous Integration (CI) Configuration](#continuous-integration-ci-configuration)
+5. [Requirements](#requirements)
+6. [Dockerfile and Docker Compose](#dockerfile-and-docker-compose)
+7. [Continuous Integration (CI) Configuration](#continuous-integration-ci-configuration)
    - [GitHub Actions Workflow](#github-actions-workflow)
-7. [System Tests](#system-tests)
+8. [System Tests](#system-tests)
    - [Unit Tests](#unit-tests)
    - [Integration Tests](#integration-tests)
 8. [Gradio UI](#gradio-ui)
@@ -96,7 +119,49 @@ Genesis can be quickly installed using `pip`. Ensure that you have **Python >= 3
    pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113
    ```
 
-### 2. Docker Setup
+### 2. Rust Components Setup
+
+The high-performance Environmental Awareness System requires Rust for optimal performance:
+
+#### Install Rust
+
+```bash
+# Install Rust via rustup
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+```
+
+#### Build Environmental Awareness System
+
+```bash
+# Navigate to Rust components
+cd rust_env_awareness
+
+# Build optimized version
+cargo build --release
+
+# Run benchmarks
+cargo run --release --example benchmark
+
+# Run tests
+cargo test --release
+```
+
+#### Python Integration (Optional)
+
+```bash
+# Install maturin for Python bindings
+pip install maturin
+
+# Build Python module
+cd rust_env_awareness
+maturin develop --release
+
+# Use in Python
+python -c "import genesis_awareness; print('Rust module loaded!')"
+```
+
+### 3. Docker Setup
 
 For reproducible environments, deployment, or CI purposes, you can use Docker to containerize Genesis.
 
@@ -193,7 +258,7 @@ services:
     restart: unless-stopped
 ```
 
-### 3. Installation Scripts
+### 4. Installation Scripts
 
 To streamline the installation process, you can use shell scripts.
 
@@ -1155,11 +1220,11 @@ We extend our gratitude to the developers and maintainers of these projects for 
 
 ---
 
-## High-Performance Environmental Awareness System
+## 🚀 High-Performance Environmental Awareness System
 
-Genesis now includes a blazing-fast Rust implementation of an Environmental Awareness System for embodied AI, developed using [Flow Nexus](https://flow-nexus.com) - an advanced AI orchestration platform.
+Genesis now includes a blazing-fast Rust implementation of an Environmental Awareness System for embodied AI, developed and optimized using [Flow Nexus](https://flow-nexus.com) - an advanced AI orchestration platform that combines swarm intelligence with neural network optimization.
 
-### 🚀 Performance Achievements
+### ⚡ Performance Achievements
 
 | Metric | Python | Rust | Improvement |
 |--------|--------|------|-------------|
@@ -1178,22 +1243,112 @@ Genesis now includes a blazing-fast Rust implementation of an Environmental Awar
 
 ### 🛠️ Flow Nexus Integration
 
-This implementation was designed and optimized using Flow Nexus capabilities:
+This implementation was designed and optimized using Flow Nexus - a cutting-edge AI orchestration platform that enabled the 113x performance improvement through intelligent swarm coordination and neural optimization.
+
+#### Installation & Setup
 
 ```bash
-# Install Flow Nexus
+# Install Flow Nexus globally
 npm install -g @flow-nexus/cli
 
-# Initialize swarm for optimization
+# Initialize your Flow Nexus environment
+npx flow-nexus init --project genesis
+
+# Login to Flow Nexus (for cloud features)
+npx flow-nexus login --email your-email@example.com
+```
+
+#### Swarm Optimization Workflow
+
+```bash
+# Step 1: Initialize AI swarm with mesh topology for parallel optimization
 npx flow-nexus swarm init --topology mesh --max-agents 8
 
-# Train neural models
-npx flow-nexus neural train --config rust_env_awareness/neural_config.json
+# Step 2: Spawn specialized agents for different optimization tasks
+npx flow-nexus agent spawn --type researcher --capabilities "performance-analysis,profiling"
+npx flow-nexus agent spawn --type coder --capabilities "rust,simd,memory-optimization"
+npx flow-nexus agent spawn --type optimizer --capabilities "algorithm-optimization,cache-analysis"
+npx flow-nexus agent spawn --type benchmarker --capabilities "performance-testing,metrics"
 
-# Orchestrate optimization workflow
+# Step 3: Orchestrate the optimization workflow
 npx flow-nexus workflow create --name "genesis-optimization" \
   --agents "researcher,coder,optimizer,benchmarker" \
-  --target "rust_env_awareness"
+  --target "rust_env_awareness" \
+  --strategy "parallel" \
+  --iterations 100
+```
+
+#### Neural Network Training & Deployment
+
+```bash
+# Train neural models with custom configuration
+npx flow-nexus neural train \
+  --config rust_env_awareness/neural_config.json \
+  --dataset environmental_data.json \
+  --epochs 1000 \
+  --optimizer adam \
+  --learning-rate 0.001
+
+# Deploy trained model to production
+npx flow-nexus neural deploy \
+  --model-id "genesis-awareness-v2" \
+  --target "rust_env_awareness/models/" \
+  --format "onnx"
+
+# Run inference benchmarks
+npx flow-nexus neural benchmark \
+  --model "genesis-awareness-v2" \
+  --samples 10000 \
+  --batch-size 32
+```
+
+#### Advanced Features
+
+```bash
+# Real-time performance monitoring
+npx flow-nexus monitor --project genesis --metrics "latency,throughput,memory"
+
+# Automated bottleneck detection
+npx flow-nexus analyze bottlenecks --target "rust_env_awareness/src/"
+
+# Generate optimization report
+npx flow-nexus report generate \
+  --type "performance" \
+  --format "html" \
+  --output "reports/optimization.html"
+
+# Continuous optimization with GitHub integration
+npx flow-nexus github integrate \
+  --repo "ruvnet/genesis" \
+  --workflow "optimize-on-push" \
+  --branch "main"
+```
+
+#### Memory Optimization Analysis
+
+```bash
+# Analyze memory usage patterns
+npx flow-nexus memory analyze --target "rust_env_awareness"
+
+# Suggest memory pool configurations
+npx flow-nexus memory optimize --suggest-pools --output "memory_config.json"
+
+# Apply optimizations automatically
+npx flow-nexus memory apply --config "memory_config.json"
+```
+
+#### Distributed Training (Multi-GPU)
+
+```bash
+# Initialize distributed cluster
+npx flow-nexus cluster init --nodes 4 --gpus-per-node 2
+
+# Run distributed training
+npx flow-nexus neural train-distributed \
+  --cluster "genesis-cluster" \
+  --model "environmental-awareness" \
+  --data-parallel \
+  --mixed-precision
 ```
 
 ### 📊 Architecture Overview
@@ -1208,6 +1363,21 @@ The Rust implementation (`rust_env_awareness/`) includes:
 6. **Predictor Module** (`src/predictor.rs`) - Time series prediction with linear regression
 
 ### 💻 Quick Start
+
+#### Using Flow Nexus CLI (Recommended)
+
+```bash
+# Quick setup with Flow Nexus
+npx flow-nexus quickstart genesis-awareness
+
+# This will:
+# 1. Install dependencies
+# 2. Build Rust components
+# 3. Run benchmarks
+# 4. Generate performance report
+```
+
+#### Manual Setup
 
 ```rust
 use genesis_awareness::EnvironmentalAwarenessSystem;
