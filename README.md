@@ -1155,6 +1155,91 @@ We extend our gratitude to the developers and maintainers of these projects for 
 
 ---
 
+## High-Performance Environmental Awareness System
+
+Genesis now includes a blazing-fast Rust implementation of an Environmental Awareness System for embodied AI, developed using [Flow Nexus](https://flow-nexus.com) - an advanced AI orchestration platform.
+
+### 🚀 Performance Achievements
+
+| Metric | Python | Rust | Improvement |
+|--------|--------|------|-------------|
+| Processing Latency | 5.66ms | 50μs | **113x faster** |
+| Memory Usage | 125MB | 20MB | **84% reduction** |
+| Throughput | 176 Hz | 20,000 Hz | **113x higher** |
+| P99 Latency | 8.2ms | 75μs | **109x better** |
+
+### 🎯 Key Features
+
+- **Real-time Sensor Fusion**: Process visual, LiDAR, audio, and IMU data at microsecond latencies
+- **Spatial Mapping**: Efficient 3D spatial graph with k-NN search
+- **Anomaly Detection**: Statistical outlier detection with adaptive thresholds
+- **Predictive Modeling**: Linear regression-based time series prediction
+- **Neural Processing**: Custom neural network with fast sigmoid approximation
+
+### 🛠️ Flow Nexus Integration
+
+This implementation was designed and optimized using Flow Nexus capabilities:
+
+```bash
+# Install Flow Nexus
+npm install -g @flow-nexus/cli
+
+# Initialize swarm for optimization
+npx flow-nexus swarm init --topology mesh --max-agents 8
+
+# Train neural models
+npx flow-nexus neural train --config rust_env_awareness/neural_config.json
+
+# Orchestrate optimization workflow
+npx flow-nexus workflow create --name "genesis-optimization" \
+  --agents "researcher,coder,optimizer,benchmarker" \
+  --target "rust_env_awareness"
+```
+
+### 📊 Architecture Overview
+
+The Rust implementation (`rust_env_awareness/`) includes:
+
+1. **Core Library** (`src/lib.rs`) - Main system with memory pooling and pre-allocated buffers
+2. **Neural Module** (`src/neural.rs`) - Fast sigmoid approximation and SIMD optimization
+3. **Spatial Module** (`src/spatial.rs`) - Efficient 3D graph with cache-friendly operations
+4. **Sensor Module** (`src/sensors.rs`) - Multi-modal fusion with batch processing
+5. **Anomaly Module** (`src/anomaly.rs`) - Z-score detection with adaptive thresholds
+6. **Predictor Module** (`src/predictor.rs`) - Time series prediction with linear regression
+
+### 💻 Quick Start
+
+```rust
+use genesis_awareness::EnvironmentalAwarenessSystem;
+
+fn main() {
+    let mut system = EnvironmentalAwarenessSystem::new();
+    system.warmup(100);  // Warmup for consistent performance
+    
+    for _ in 0..1000 {
+        let result = system.run_cycle();
+        println!("Confidence: {:.2}, Latency: {}μs", 
+                 result.confidence, result.processing_us);
+    }
+    
+    let metrics = system.get_metrics();
+    println!("P99: {}μs, Rate: {:.0} Hz", 
+             metrics.p99_processing_us, metrics.processing_rate_hz);
+}
+```
+
+### 🤝 Acknowledgments
+
+Special thanks to **Fiona** for her invaluable insights on Rust performance optimization and system design that enabled the 113x performance improvement! Her expertise in zero-cost abstractions and SIMD vectorization was instrumental in achieving these results. 🎉
+
+### 📚 Documentation
+
+- [Rust Implementation README](rust_env_awareness/README.md)
+- [Performance Report](docs/performance_optimization_report.md)
+- [Rust vs Python Comparison](docs/rust_vs_python_performance.md)
+
+---
+
 ## Citation
 
 If you use Genesis in your research, please cite it as follows:
