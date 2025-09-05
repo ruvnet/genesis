@@ -9,7 +9,7 @@
 
 </div>
 
-Genesis is a groundbreaking physics platform designed for robotics and embodied AI applications that combines unprecedented simulation speeds with comprehensive features. Now featuring a **blazing-fast Rust-based Environmental Awareness System** with 113x performance improvements, powered by [Flow Nexus](https://flow-nexus.com) AI orchestration.
+Genesis is a groundbreaking physics platform designed for robotics and embodied AI applications that combines unprecedented simulation speeds with comprehensive features. Now featuring a **blazing-fast Rust-based Environmental Awareness System** with 113x performance improvements, powered by [Flow Nexus](https://flow-nexus.ruv.io) AI orchestration.
 
 ## 🎯 What's New in v2.0
 
